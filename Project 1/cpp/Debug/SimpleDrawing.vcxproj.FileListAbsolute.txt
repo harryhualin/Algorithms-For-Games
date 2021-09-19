@@ -1,0 +1,3 @@
+C:\Users\super\Downloads\WindowsExamples\SimpleDrawing\cpp\Debug\SimpleDrawing.exe
+C:\Users\super\Desktop\College Programs\CSE381\SimpleDrawing\cpp\Debug\SimpleDrawing.exe
+C:\Users\super\Desktop\College Programs\CSE381\Project 1\cpp\Debug\SimpleDrawing.exe

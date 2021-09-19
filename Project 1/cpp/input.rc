@@ -1,0 +1,9 @@
+//<Snippetinput_rc>
+#include "resource.h"
+
+IDR_ACCEL1 ACCELERATORS
+{
+    0x4D,   ID_TOGGLE_MODE, VIRTKEY, CONTROL    // ctrl-M
+}
+//</Snippetinput_rc>
+	
