@@ -54,6 +54,8 @@ struct MyEllipse
 {
     D2D1_ELLIPSE    ellipse;
     D2D1_COLOR_F    color;
+    int             group;
+           
 
     void Draw(ID2D1RenderTarget *pRT, ID2D1SolidColorBrush *pBrush)
     {
@@ -82,7 +84,6 @@ class MainWindow : public BaseWindow<MainWindow>
         SelectMode,
         DragMode
     };
-
 
     enum Screen
     {
@@ -120,7 +121,7 @@ class MainWindow : public BaseWindow<MainWindow>
     }
 
     void    ClearSelection() { selection = ellipses.end(); }
-    HRESULT InsertEllipse(float x, float y, D2D1::ColorF color);
+    HRESULT InsertEllipse(float x, float y, float radius, D2D1::ColorF color, int group);
 
     BOOL    HitTest(float x, float y);
     void    SetMode(Mode m);
@@ -338,7 +339,7 @@ void MainWindow::OnKeyDown(UINT vkey)
     }
 }
 
-HRESULT MainWindow::InsertEllipse(float x, float y, D2D1::ColorF color)
+HRESULT MainWindow::InsertEllipse(float x, float y, float radius, D2D1::ColorF color, int group)
 {
     try
     {
@@ -347,8 +348,9 @@ HRESULT MainWindow::InsertEllipse(float x, float y, D2D1::ColorF color)
             shared_ptr<MyEllipse>(new MyEllipse()));
 
         Selection()->ellipse.point = ptMouse = D2D1::Point2F(x, y);
-        Selection()->ellipse.radiusX = Selection()->ellipse.radiusY = 10.0f; 
+        Selection()->ellipse.radiusX = Selection()->ellipse.radiusY = radius; 
         Selection()->color = color;
+        Selection()->group = group;
     }
     catch (std::bad_alloc)
     {
@@ -405,39 +407,92 @@ void MainWindow::SetMode(Mode m)
 // Initializes circles for quick hull
 void MainWindow::QuickHullButton() {
     RECT rect;
+    screen = QuickHull;
     GetWindowRect(m_hwnd, &rect);
     ellipses.clear();
 
     for (int i = 0; i < 15; i++) {
         float xcoord = rand() % (rect.right - rect.left - 300) + 250;
         float ycoord = rand() % (rect.bottom - rect.top - 150) + 50;
-        InsertEllipse(xcoord, ycoord, D2D1::ColorF(D2D1::ColorF::Red));
+        InsertEllipse(xcoord, ycoord, 10.0f, D2D1::ColorF(D2D1::ColorF::Red), 1);
     }
     InvalidateRect(m_hwnd, NULL, FALSE);
 }
 
 // Initializes circles for Minkowski Sum
 void MainWindow::MinkowskiSumButton() {
+    RECT rect;
+    screen = MinkowskiSum;
+    GetWindowRect(m_hwnd, &rect);
+    ellipses.clear();
 
+    // Convex hull for group 1
+    for (int i = 0; i < 6; i++) {
+        float xcoord = rand() % ((rect.right - rect.left - 300)/2) + 250;
+        float ycoord = rand() % ((rect.bottom - rect.top - 150)/2) + 50;
+        InsertEllipse(xcoord, ycoord, 10.0f, D2D1::ColorF(D2D1::ColorF::Red), 1);
+    }
 
+    // Convex hull for group 2
+    for (int i = 0; i < 6; i++) {
+        float xcoord = rand() % ((rect.right - rect.left - 300)/2) + 250 + (rect.right - rect.left - 300) / 2;
+        float ycoord = rand() % ((rect.bottom - rect.top - 150)/2) + 50 + (rect.bottom - rect.top - 150) / 2;
+        InsertEllipse(xcoord, ycoord, 10.0f, D2D1::ColorF(D2D1::ColorF::Blue), 2);
+    }
+    InvalidateRect(m_hwnd, NULL, FALSE);
 }
 
 // Initializes circles for Minkowski Difference
 void MainWindow::MinkowskiDifferenceButton() {
+    RECT rect;
+    screen = MinkowskiDifference;
+    GetWindowRect(m_hwnd, &rect);
+    ellipses.clear();
 
+    // Convex hull for group 1
+    for (int i = 0; i < 6; i++) {
+        float xcoord = rand() % ((rect.right - rect.left - 300) / 2) + 250;
+        float ycoord = rand() % ((rect.bottom - rect.top - 150) / 2) + 50;
+        InsertEllipse(xcoord, ycoord, 10.0f, D2D1::ColorF(D2D1::ColorF::Red), 1);
+    }
 
+    // Convex hull for group 2
+    for (int i = 0; i < 6; i++) {
+        float xcoord = rand() % ((rect.right - rect.left - 300) / 2) + 250 + (rect.right - rect.left - 300) / 2;
+        float ycoord = rand() % ((rect.bottom - rect.top - 150) / 2) + 50 + (rect.bottom - rect.top - 150) / 2;
+        InsertEllipse(xcoord, ycoord, 10.0f, D2D1::ColorF(D2D1::ColorF::Blue), 2);
+    }
+    InvalidateRect(m_hwnd, NULL, FALSE);
 }
 
 // Initializes circles for Point Convex Hull
 void MainWindow::PointConvexHullButton() {
+    RECT rect;
+    screen = PointConvexHull;
+    GetWindowRect(m_hwnd, &rect);
+    ellipses.clear();
 
-
+    for (int i = 0; i < 15; i++) {
+        float xcoord = rand() % (rect.right - rect.left - 300) + 250;
+        float ycoord = rand() % (rect.bottom - rect.top - 150) + 50;
+        InsertEllipse(xcoord, ycoord, 0.0f, D2D1::ColorF(D2D1::ColorF::Red), 1);
+    }
+    InvalidateRect(m_hwnd, NULL, FALSE);
 }
 
 // Initializes circles for GJK
 void MainWindow::GJKButton() {
+    RECT rect;
+    screen = GJK;
+    GetWindowRect(m_hwnd, &rect);
+    ellipses.clear();
 
-
+    for (int i = 0; i < 15; i++) {
+        float xcoord = rand() % (rect.right - rect.left - 300) + 250;
+        float ycoord = rand() % (rect.bottom - rect.top - 150) + 50;
+        InsertEllipse(xcoord, ycoord, 0.0f, D2D1::ColorF(D2D1::ColorF::Red), 1);
+    }
+    InvalidateRect(m_hwnd, NULL, FALSE);
 }
 
 

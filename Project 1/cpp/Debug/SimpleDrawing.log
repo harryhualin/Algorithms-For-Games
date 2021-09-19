@@ -1,5 +1,15 @@
 ﻿  main.cpp
 C:\Users\super\Desktop\College Programs\CSE381\Project 1\cpp\main.cpp(32,17): warning C4996: 'ID2D1Factory::GetDesktopDpi': Deprecated. Use DisplayInformation::LogicalDpi for Windows Store Apps or GetDpiForWindow for desktop apps.
-C:\Users\super\Desktop\College Programs\CSE381\Project 1\cpp\main.cpp(412,22): warning C4244: 'initializing': conversion from 'LONG' to 'float', possible loss of data
-C:\Users\super\Desktop\College Programs\CSE381\Project 1\cpp\main.cpp(413,22): warning C4244: 'initializing': conversion from 'LONG' to 'float', possible loss of data
+C:\Users\super\Desktop\College Programs\CSE381\Project 1\cpp\main.cpp(415,22): warning C4244: 'initializing': conversion from 'LONG' to 'float', possible loss of data
+C:\Users\super\Desktop\College Programs\CSE381\Project 1\cpp\main.cpp(416,22): warning C4244: 'initializing': conversion from 'LONG' to 'float', possible loss of data
+C:\Users\super\Desktop\College Programs\CSE381\Project 1\cpp\main.cpp(431,22): warning C4244: 'initializing': conversion from 'LONG' to 'float', possible loss of data
+C:\Users\super\Desktop\College Programs\CSE381\Project 1\cpp\main.cpp(432,22): warning C4244: 'initializing': conversion from 'LONG' to 'float', possible loss of data
+C:\Users\super\Desktop\College Programs\CSE381\Project 1\cpp\main.cpp(438,22): warning C4244: 'initializing': conversion from 'LONG' to 'float', possible loss of data
+C:\Users\super\Desktop\College Programs\CSE381\Project 1\cpp\main.cpp(439,22): warning C4244: 'initializing': conversion from 'LONG' to 'float', possible loss of data
+C:\Users\super\Desktop\College Programs\CSE381\Project 1\cpp\main.cpp(454,22): warning C4244: 'initializing': conversion from 'LONG' to 'float', possible loss of data
+C:\Users\super\Desktop\College Programs\CSE381\Project 1\cpp\main.cpp(455,22): warning C4244: 'initializing': conversion from 'LONG' to 'float', possible loss of data
+C:\Users\super\Desktop\College Programs\CSE381\Project 1\cpp\main.cpp(461,22): warning C4244: 'initializing': conversion from 'LONG' to 'float', possible loss of data
+C:\Users\super\Desktop\College Programs\CSE381\Project 1\cpp\main.cpp(462,22): warning C4244: 'initializing': conversion from 'LONG' to 'float', possible loss of data
+C:\Users\super\Desktop\College Programs\CSE381\Project 1\cpp\main.cpp(476,22): warning C4244: 'initializing': conversion from 'LONG' to 'float', possible loss of data
+C:\Users\super\Desktop\College Programs\CSE381\Project 1\cpp\main.cpp(477,22): warning C4244: 'initializing': conversion from 'LONG' to 'float', possible loss of data
   SimpleDrawing.vcxproj -> C:\Users\super\Desktop\College Programs\CSE381\Project 1\cpp\Debug\SimpleDrawing.exe
