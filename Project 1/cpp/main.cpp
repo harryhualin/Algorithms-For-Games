@@ -2,6 +2,7 @@
 #include <Windowsx.h>
 #include <d2d1.h>
 
+
 #include <list>
 #include <memory>
 using namespace std;
@@ -119,8 +120,11 @@ class MainWindow : public BaseWindow<MainWindow>
     list<shared_ptr<MyEllipse>>             hull2;
     list<shared_ptr<MyEllipse>>             group1;
     list<shared_ptr<MyEllipse>>             group2;
-
     int                                     group;
+
+    float                                   centerX;
+    float                                   centerY;
+
      
     shared_ptr<MyEllipse> Selection() 
     { 
@@ -245,6 +249,7 @@ void MainWindow::OnPaint()
                     pBrush,
                     5.0f
                 );
+                centerX = x;
             }
             else {
                 pRenderTarget->DrawLine(
@@ -265,6 +270,7 @@ void MainWindow::OnPaint()
                     pBrush,
                     5.0f
                 );
+                centerY = y;
             }
             else {
                 pRenderTarget->DrawLine(
@@ -302,7 +308,7 @@ void MainWindow::OnPaint()
             break;
 
         case PointConvexHull:
-
+            PointConvexHullDraw();
             break;
 
         case GJK:
@@ -540,14 +546,6 @@ void MainWindow::MinkowskiDifferenceDraw() {
     }
 }
 
-void MainWindow::PointConvexHullDraw() {
-
-}
-
-void MainWindow::GJKDraw() {
-
-}
-
 // Returns the side of point p with respect to line joining p1 and p2
 int findSide(shared_ptr<MyEllipse> p1, shared_ptr<MyEllipse> p2, shared_ptr<MyEllipse> p) {
     int val = (p->ellipse.point.y - p1->ellipse.point.y) * (p2->ellipse.point.x - p1->ellipse.point.x) -
@@ -558,11 +556,6 @@ int findSide(shared_ptr<MyEllipse> p1, shared_ptr<MyEllipse> p2, shared_ptr<MyEl
     if (val < 0)
         return -1;
     return 0;
-}
-
-int lineDist(shared_ptr<MyEllipse> p1, shared_ptr<MyEllipse> p2, shared_ptr<MyEllipse> p) {
-    return abs((p->ellipse.point.y - p1->ellipse.point.y) * (p2->ellipse.point.x - p1->ellipse.point.x) -
-        (p2->ellipse.point.y - p1->ellipse.point.y) * (p->ellipse.point.x - p1->ellipse.point.x));
 }
 
 // Retruns whether or not a point is within a convex hull
@@ -579,7 +572,57 @@ bool convexHullContains(list<shared_ptr<MyEllipse>> hull, float x, float y) {
         }
         prev = *i;
     }
+
+    if (findSide(hull.back(), hull.front(), ellipse) <= 0)
+        return false;
+
     return true;
+}
+
+void MainWindow::PointConvexHullDraw() {
+    hull1.clear();
+    shared_ptr<MyEllipse> prev;
+    QuickHullAlgorithm(ellipses, ellipses.size() - 1, &hull1);
+    pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::White));
+    pRenderTarget->DrawLine(
+        hull1.front()->ellipse.point,
+        hull1.back()->ellipse.point,
+        pBrush,
+        3.0f
+    );
+    prev = hull1.front();
+    for (auto i = hull1.begin(); i != hull1.end(); ++i)
+    {
+        // Redraw Convex hull circles
+        (*i)->ChangeColor(D2D1::ColorF(D2D1::ColorF::Blue));
+        (*i)->Draw(pRenderTarget, pBrush);
+
+        // Redraw lines of convex hull
+        if (i != hull1.begin()) {
+            pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::White));
+            pRenderTarget->DrawLine(
+                prev->ellipse.point,
+                (*i)->ellipse.point,
+                pBrush,
+                3.0f
+            );
+        }
+        prev = *i;
+    }
+    if (convexHullContains(hull1, ellipses.back()->ellipse.point.x, ellipses.back()->ellipse.point.y))
+        ellipses.back()->ChangeColor(D2D1::ColorF(D2D1::ColorF::Red));
+    else
+        ellipses.back()->ChangeColor(D2D1::ColorF(D2D1::ColorF::Blue));
+    ellipses.back()->Draw(pRenderTarget, pBrush);
+}
+
+void MainWindow::GJKDraw() {
+
+}
+
+int lineDist(shared_ptr<MyEllipse> p1, shared_ptr<MyEllipse> p2, shared_ptr<MyEllipse> p) {
+    return abs((p->ellipse.point.y - p1->ellipse.point.y) * (p2->ellipse.point.x - p1->ellipse.point.x) -
+        (p2->ellipse.point.y - p1->ellipse.point.y) * (p->ellipse.point.x - p1->ellipse.point.x));
 }
 
 shared_ptr<MyEllipse> getValue(list<shared_ptr<MyEllipse>> ellipses, int n) {
@@ -671,7 +714,7 @@ void MainWindow::MinkowskiSumAlgorithm(list<shared_ptr<MyEllipse>> group1, list<
                 hull->end(),
                 shared_ptr<MyEllipse>(new MyEllipse())));
 
-            ellipse->ellipse.point = D2D1::Point2F((float)((*i)->ellipse.point.x) + (float)((*j)->ellipse.point.x), (float)((*i)->ellipse.point.y) + (float)((*j)->ellipse.point.y));
+            ellipse->ellipse.point = D2D1::Point2F((float)((*i)->ellipse.point.x) + (float)((*j)->ellipse.point.x) - centerX, (float)((*i)->ellipse.point.y) + (float)((*j)->ellipse.point.y) - centerY);
             ellipse->ellipse.radiusX = ellipse->ellipse.radiusY = 0.0f;
             ellipse->color = D2D1::ColorF(D2D1::ColorF::Black);
             ellipse->group = 3;
@@ -686,7 +729,7 @@ void MainWindow::MinkowskiDifferenceAlgorithm(list<shared_ptr<MyEllipse>> group1
                 hull->end(),
                 shared_ptr<MyEllipse>(new MyEllipse())));
 
-            ellipse->ellipse.point = D2D1::Point2F((float)((*j)->ellipse.point.x) - (float)((*i)->ellipse.point.x), (float)((*j)->ellipse.point.y) - (float)((*i)->ellipse.point.y));
+            ellipse->ellipse.point = D2D1::Point2F((float)((*j)->ellipse.point.x) - (float)((*i)->ellipse.point.x) + centerX, (float)((*j)->ellipse.point.y) - (float)((*i)->ellipse.point.y) + centerY);
             ellipse->ellipse.radiusX = ellipse->ellipse.radiusY = 0.0f;
             ellipse->color = D2D1::ColorF(D2D1::ColorF::Black);
             ellipse->group = 3;
@@ -695,7 +738,7 @@ void MainWindow::MinkowskiDifferenceAlgorithm(list<shared_ptr<MyEllipse>> group1
 }
 
 void MainWindow::PointConvexHullAlgorithm(list<shared_ptr<MyEllipse>> ellipses) {
-
+    
 }
 
 void MainWindow::GJKAlgorithm(list<shared_ptr<MyEllipse>> ellipses) {
@@ -1019,6 +1062,9 @@ void MainWindow::PointConvexHullButton() {
         float ycoord = rand() % (rect.bottom - rect.top - 150) + 50;
         InsertEllipse(xcoord, ycoord, 0.0f, D2D1::ColorF(D2D1::ColorF::Red), 1);
     }
+
+    InsertEllipse(centerX, centerY, 10.0f, D2D1::ColorF(D2D1::ColorF::Red), 0);
+
     InvalidateRect(m_hwnd, NULL, FALSE);
 }
 
