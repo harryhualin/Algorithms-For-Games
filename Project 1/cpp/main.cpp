@@ -114,6 +114,13 @@ class MainWindow : public BaseWindow<MainWindow>
 
     list<shared_ptr<MyEllipse>>             ellipses;
     list<shared_ptr<MyEllipse>>::iterator   selection;
+
+    list<shared_ptr<MyEllipse>>             hull1;
+    list<shared_ptr<MyEllipse>>             hull2;
+    list<shared_ptr<MyEllipse>>             group1;
+    list<shared_ptr<MyEllipse>>             group2;
+
+    int                                     group;
      
     shared_ptr<MyEllipse> Selection() 
     { 
@@ -148,10 +155,15 @@ class MainWindow : public BaseWindow<MainWindow>
     void    PointConvexHullButton();
     void    GJKButton();
     void    QuickHullAlgorithm(list<shared_ptr<MyEllipse>> ellipses, int n, list<shared_ptr<MyEllipse>> *hull);
-    void    MinkowskiSumAlgorithm(list<shared_ptr<MyEllipse>> ellipses);
-    void    MinkowskiDifferenceAlgorithm(list<shared_ptr<MyEllipse>> ellipses);
+    void    MinkowskiSumAlgorithm(list<shared_ptr<MyEllipse>> group1, list<shared_ptr<MyEllipse>> group2, list<shared_ptr<MyEllipse>>* hull);
+    void    MinkowskiDifferenceAlgorithm(list<shared_ptr<MyEllipse>> group1, list<shared_ptr<MyEllipse>> group2, list<shared_ptr<MyEllipse>>* hull);
     void    PointConvexHullAlgorithm(list<shared_ptr<MyEllipse>> ellipses);
     void    GJKAlgorithm(list<shared_ptr<MyEllipse>> ellipses);
+    void    QuickHullDraw();
+    void    MinkowskiSumDraw();
+    void    MinkowskiDifferenceDraw();
+    void    PointConvexHullDraw();
+    void    GJKDraw();
 
 
 public:
@@ -268,50 +280,25 @@ void MainWindow::OnPaint()
         {
             // Redraw Circles
             pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::Black));
-            (*i)->ChangeColor(D2D1::ColorF(D2D1::ColorF::Red));
+            if ((*i)->group == 1)
+                (*i)->ChangeColor(D2D1::ColorF(D2D1::ColorF::Red));
+            else if ((*i)->group == 2)
+                (*i)->ChangeColor(D2D1::ColorF(D2D1::ColorF::Blue));
             (*i)->Draw(pRenderTarget, pBrush);
         }
 
-        list<shared_ptr<MyEllipse>> hull;
-        shared_ptr<MyEllipse> prev;
         // Determine algorithm to use to represent on screen
         switch (screen) {
         case QuickHull:
-            QuickHullAlgorithm(ellipses, ellipses.size(), &hull);
-            prev = hull.front();
-            pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::White));
-            pRenderTarget->DrawLine(
-                hull.front()->ellipse.point,
-                hull.back()->ellipse.point,
-                pBrush,
-                3.0f
-            );
-            for (auto i = hull.begin(); i != hull.end(); ++i)
-            {
-                // Redraw Convex hull circles
-                (*i)->ChangeColor(D2D1::ColorF(D2D1::ColorF::Blue));
-                (*i)->Draw(pRenderTarget, pBrush);
-
-                // Redraw lines of convex hull
-                if (i != hull.begin()) {
-                    pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::White));
-                    pRenderTarget->DrawLine(
-                        prev->ellipse.point,
-                        (*i)->ellipse.point,
-                        pBrush,
-                        3.0f
-                    );
-                }
-                prev = *i;
-            }
+            QuickHullDraw();
             break;
 
         case MinkowskiSum:
-
+            MinkowskiSumDraw();
             break;
 
         case MinkowskiDifference:
-
+            MinkowskiDifferenceDraw();
             break;
 
         case PointConvexHull:
@@ -333,6 +320,234 @@ void MainWindow::OnPaint()
 
     }
 }
+
+void MainWindow::QuickHullDraw() {
+    hull1.clear();
+    shared_ptr<MyEllipse> prev;
+    QuickHullAlgorithm(ellipses, ellipses.size(), &hull1);
+    pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::White));
+    pRenderTarget->DrawLine(
+        hull1.front()->ellipse.point,
+        hull1.back()->ellipse.point,
+        pBrush,
+        3.0f
+    );
+    prev = hull1.front();
+    for (auto i = hull1.begin(); i != hull1.end(); ++i)
+    {
+        // Redraw Convex hull circles
+        (*i)->ChangeColor(D2D1::ColorF(D2D1::ColorF::Blue));
+        (*i)->Draw(pRenderTarget, pBrush);
+
+        // Redraw lines of convex hull
+        if (i != hull1.begin()) {
+            pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::White));
+            pRenderTarget->DrawLine(
+                prev->ellipse.point,
+                (*i)->ellipse.point,
+                pBrush,
+                3.0f
+            );
+        }
+        prev = *i;
+    }
+}
+
+void MainWindow::MinkowskiSumDraw() {
+    
+    // Divide ellipses into two groups
+    group1.clear();
+    group2.clear();
+    hull1.clear();
+    hull2.clear();
+    list<shared_ptr<MyEllipse>> hull3;
+    list<shared_ptr<MyEllipse>> hull4;
+    shared_ptr<MyEllipse> prev;
+
+    for (auto i = ellipses.begin(); i != ellipses.end(); ++i) {
+        if ((*i)->group == 1) {
+            group1.push_back(*i);
+        }
+        else if ((*i)->group == 2) {
+            group2.push_back(*i);
+        }
+    }
+
+    // Draw first set of convex hulls
+    QuickHullAlgorithm(group1, group1.size(), &hull1);
+    pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::White));
+    pRenderTarget->DrawLine(
+        hull1.front()->ellipse.point,
+        hull1.back()->ellipse.point,
+        pBrush,
+        3.0f
+    );
+    prev = hull1.front();
+    for (auto i = hull1.begin(); i != hull1.end(); ++i)
+    {
+        // Redraw lines of convex hull
+        if (i != hull1.begin()) {
+            pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::White));
+            pRenderTarget->DrawLine(
+                prev->ellipse.point,
+                (*i)->ellipse.point,
+                pBrush,
+                3.0f
+            );
+        }
+        prev = *i;
+    }
+
+    // Draw second set of convex hulls
+    QuickHullAlgorithm(group2, group2.size(), &hull2);
+    pRenderTarget->DrawLine(
+        hull2.front()->ellipse.point,
+        hull2.back()->ellipse.point,
+        pBrush,
+        3.0f
+    );
+    prev = hull2.front();
+    for (auto i = hull2.begin(); i != hull2.end(); ++i)
+    {
+        // Redraw lines of convex hull
+        if (i != hull2.begin()) {
+            pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::White));
+            pRenderTarget->DrawLine(
+                prev->ellipse.point,
+                (*i)->ellipse.point,
+                pBrush,
+                3.0f
+            );
+        }
+        prev = *i;
+    }
+
+    MinkowskiSumAlgorithm(hull1, hull2, &hull3);
+    QuickHullAlgorithm(hull3, hull3.size(), &hull4);
+    pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::Red));
+    pRenderTarget->DrawLine(
+        hull4.front()->ellipse.point,
+        hull4.back()->ellipse.point,
+        pBrush,
+        3.0f
+    );
+    prev = hull4.front();
+    for (auto i = hull4.begin(); i != hull4.end(); ++i)
+    {
+        // Redraw lines of convex hull
+        if (i != hull4.begin()) {
+            pRenderTarget->DrawLine(
+                prev->ellipse.point,
+                (*i)->ellipse.point,
+                pBrush,
+                3.0f
+            );
+        }
+        prev = *i;
+    }
+}
+
+void MainWindow::MinkowskiDifferenceDraw() {
+    // Divide ellipses into two groups
+    group1.clear();
+    group2.clear();
+    hull1.clear();
+    hull2.clear();
+    list<shared_ptr<MyEllipse>> hull3;
+    list<shared_ptr<MyEllipse>> hull4;
+    shared_ptr<MyEllipse> prev;
+
+    for (auto i = ellipses.begin(); i != ellipses.end(); ++i) {
+        if ((*i)->group == 1) {
+            group1.push_back(*i);
+        }
+        else if ((*i)->group == 2) {
+            group2.push_back(*i);
+        }
+    }
+
+    // Draw first set of convex hulls
+    QuickHullAlgorithm(group1, group1.size(), &hull1);
+    pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::White));
+    pRenderTarget->DrawLine(
+        hull1.front()->ellipse.point,
+        hull1.back()->ellipse.point,
+        pBrush,
+        3.0f
+    );
+    prev = hull1.front();
+    for (auto i = hull1.begin(); i != hull1.end(); ++i)
+    {
+        // Redraw lines of convex hull
+        if (i != hull1.begin()) {
+            pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::White));
+            pRenderTarget->DrawLine(
+                prev->ellipse.point,
+                (*i)->ellipse.point,
+                pBrush,
+                3.0f
+            );
+        }
+        prev = *i;
+    }
+
+    // Draw second set of convex hulls
+    QuickHullAlgorithm(group2, group2.size(), &hull2);
+    pRenderTarget->DrawLine(
+        hull2.front()->ellipse.point,
+        hull2.back()->ellipse.point,
+        pBrush,
+        3.0f
+    );
+    prev = hull2.front();
+    for (auto i = hull2.begin(); i != hull2.end(); ++i)
+    {
+        // Redraw lines of convex hull
+        if (i != hull2.begin()) {
+            pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::White));
+            pRenderTarget->DrawLine(
+                prev->ellipse.point,
+                (*i)->ellipse.point,
+                pBrush,
+                3.0f
+            );
+        }
+        prev = *i;
+    }
+
+    MinkowskiDifferenceAlgorithm(hull1, hull2, &hull3);
+    QuickHullAlgorithm(hull3, hull3.size(), &hull4);
+    pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::Red));
+    pRenderTarget->DrawLine(
+        hull4.front()->ellipse.point,
+        hull4.back()->ellipse.point,
+        pBrush,
+        3.0f
+    );
+    prev = hull4.front();
+    for (auto i = hull4.begin(); i != hull4.end(); ++i)
+    {
+        // Redraw lines of convex hull
+        if (i != hull4.begin()) {
+            pRenderTarget->DrawLine(
+                prev->ellipse.point,
+                (*i)->ellipse.point,
+                pBrush,
+                3.0f
+            );
+        }
+        prev = *i;
+    }
+}
+
+void MainWindow::PointConvexHullDraw() {
+
+}
+
+void MainWindow::GJKDraw() {
+
+}
+
 // Returns the side of point p with respect to line joining p1 and p2
 int findSide(shared_ptr<MyEllipse> p1, shared_ptr<MyEllipse> p2, shared_ptr<MyEllipse> p) {
     int val = (p->ellipse.point.y - p1->ellipse.point.y) * (p2->ellipse.point.x - p1->ellipse.point.x) -
@@ -350,6 +565,22 @@ int lineDist(shared_ptr<MyEllipse> p1, shared_ptr<MyEllipse> p2, shared_ptr<MyEl
         (p2->ellipse.point.y - p1->ellipse.point.y) * (p->ellipse.point.x - p1->ellipse.point.x));
 }
 
+// Retruns whether or not a point is within a convex hull
+bool convexHullContains(list<shared_ptr<MyEllipse>> hull, float x, float y) {
+    if (hull.empty()) {
+        return false;
+    }
+    shared_ptr<MyEllipse> prev = hull.front();
+    shared_ptr<MyEllipse> ellipse = shared_ptr<MyEllipse>(new MyEllipse());
+    ellipse->ellipse.point = D2D1::Point2F(x, y);
+    for (auto i = ++(hull.begin()); i != hull.end(); ++i) {
+        if (findSide(prev, *i, ellipse) <= 0) {
+            return false;
+        }
+        prev = *i;
+    }
+    return true;
+}
 
 shared_ptr<MyEllipse> getValue(list<shared_ptr<MyEllipse>> ellipses, int n) {
     if (ellipses.empty() || n < 0 || n >= ellipses.size()) {
@@ -418,22 +649,49 @@ void MainWindow::QuickHullAlgorithm(list<shared_ptr<MyEllipse>> a, int n, list<s
     quickHull(a, n, getValue(a, min_x), getValue(a, max_x), 1, hull);
     quickHull(a, n, getValue(a, min_x), getValue(a, max_x), -1, hull);
 
-    for (auto i = a.begin(); i != a.end(); ++i) {
-        if (!Contains(*hull, *i)) {
+    innerPoint = hull->front();
+    for (auto i = ++(hull->begin()); i != hull->end(); ++i) {
+        if ((*i)->ellipse.point.y > innerPoint->ellipse.point.y) {
             innerPoint = *i;
-            break;
+        }
+        else if ((*i)->ellipse.point.y == innerPoint->ellipse.point.y) {
+            if ((*i)->ellipse.point.x < innerPoint->ellipse.point.x) {
+                innerPoint = *i;
+            }
         }
     }
     hull->sort(AngleComparison);
 }
 
 
-void MainWindow::MinkowskiSumAlgorithm(list<shared_ptr<MyEllipse>> ellipses) {
+void MainWindow::MinkowskiSumAlgorithm(list<shared_ptr<MyEllipse>> group1, list<shared_ptr<MyEllipse>> group2, list<shared_ptr<MyEllipse>> *hull) {
+    for (auto i = group1.begin(); i != group1.end(); ++i) {
+        for (auto j = group2.begin(); j != group2.end(); ++j) {
+            shared_ptr<MyEllipse> ellipse = *(hull->insert(
+                hull->end(),
+                shared_ptr<MyEllipse>(new MyEllipse())));
 
+            ellipse->ellipse.point = D2D1::Point2F((float)((*i)->ellipse.point.x) + (float)((*j)->ellipse.point.x), (float)((*i)->ellipse.point.y) + (float)((*j)->ellipse.point.y));
+            ellipse->ellipse.radiusX = ellipse->ellipse.radiusY = 0.0f;
+            ellipse->color = D2D1::ColorF(D2D1::ColorF::Black);
+            ellipse->group = 3;
+        }
+    }
 }
 
-void MainWindow::MinkowskiDifferenceAlgorithm(list<shared_ptr<MyEllipse>> ellipses) {
+void MainWindow::MinkowskiDifferenceAlgorithm(list<shared_ptr<MyEllipse>> group1, list<shared_ptr<MyEllipse>> group2, list<shared_ptr<MyEllipse>>* hull) {
+    for (auto i = group1.begin(); i != group1.end(); ++i) {
+        for (auto j = group2.begin(); j != group2.end(); ++j) {
+            shared_ptr<MyEllipse> ellipse = *(hull->insert(
+                hull->end(),
+                shared_ptr<MyEllipse>(new MyEllipse())));
 
+            ellipse->ellipse.point = D2D1::Point2F((float)((*j)->ellipse.point.x) - (float)((*i)->ellipse.point.x), (float)((*j)->ellipse.point.y) - (float)((*i)->ellipse.point.y));
+            ellipse->ellipse.radiusX = ellipse->ellipse.radiusY = 0.0f;
+            ellipse->color = D2D1::ColorF(D2D1::ColorF::Black);
+            ellipse->group = 3;
+        }
+    }
 }
 
 void MainWindow::PointConvexHullAlgorithm(list<shared_ptr<MyEllipse>> ellipses) {
@@ -492,6 +750,31 @@ void MainWindow::OnLButtonDown(int pixelX, int pixelY, DWORD flags)
 
             SetMode(DragMode);
         }
+        else if (convexHullContains(hull1, pixelX, pixelY))
+        {
+            SetCapture(m_hwnd);
+              
+            if (screen == QuickHull)
+                group = 0;
+            else
+                group = 1;
+            ptMouse = D2D1::Point2F(pixelX, pixelY);
+
+            SetMode(DragMode);
+        }
+        else if (convexHullContains(hull2, pixelX, pixelY))
+        {
+            SetCapture(m_hwnd);
+
+            group = 2;
+            ptMouse = D2D1::Point2F(pixelX, pixelY);
+
+            SetMode(DragMode);
+        }
+        else {
+            group = -1;
+        }
+
     InvalidateRect(m_hwnd, NULL, FALSE);
 }
 
@@ -517,25 +800,48 @@ void MainWindow::OnMouseMove(int pixelX, int pixelY, DWORD flags)
     const float dipX = DPIScale::PixelsToDipsX(pixelX);
     const float dipY = DPIScale::PixelsToDipsY(pixelY);
 
-    if ((flags & MK_LBUTTON) && Selection())
+    if ((flags & MK_LBUTTON))
     { 
-        /*
-        if (mode == DrawMode)
-        {
-            // Resize the ellipse.
-            const float width = (dipX - ptMouse.x) / 2;
-            const float height = (dipY - ptMouse.y) / 2;
-            const float x1 = ptMouse.x + width;
-            const float y1 = ptMouse.y + height;
+        if (Selection()) {
+            /*
+            if (mode == DrawMode)
+            {
+                // Resize the ellipse.
+                const float width = (dipX - ptMouse.x) / 2;
+                const float height = (dipY - ptMouse.y) / 2;
+                const float x1 = ptMouse.x + width;
+                const float y1 = ptMouse.y + height;
 
-            Selection()->ellipse = D2D1::Ellipse(D2D1::Point2F(x1, y1), width, height);
+                Selection()->ellipse = D2D1::Ellipse(D2D1::Point2F(x1, y1), width, height);
+            }
+            */
+            if (mode == DragMode)
+            {
+                // Move the ellipse.
+                Selection()->ellipse.point.x = dipX + ptMouse.x;
+                Selection()->ellipse.point.y = dipY + ptMouse.y;
+            }
         }
-        */
-        if (mode == DragMode)
-        {
-            // Move the ellipse.
-            Selection()->ellipse.point.x = dipX + ptMouse.x;
-            Selection()->ellipse.point.y = dipY + ptMouse.y;
+        else if (group == 0) {
+            for (auto i = ellipses.begin(); i != ellipses.end(); ++i) {
+                (*i)->ellipse.point.x += pixelX - ptMouse.x;
+                (*i)->ellipse.point.y += pixelY - ptMouse.y;
+            }
+            ptMouse = D2D1::Point2F(pixelX, pixelY);
+        }
+        else if (group == 1) {
+            for (auto i = group1.begin(); i != group1.end(); ++i) {
+                (*i)->ellipse.point.x += pixelX - ptMouse.x;
+                (*i)->ellipse.point.y += pixelY - ptMouse.y;
+            }
+            ptMouse = D2D1::Point2F(pixelX, pixelY);
+        }
+        else if (group == 2) {
+            for (auto i = group2.begin(); i != group2.end(); ++i) {
+                (*i)->ellipse.point.x += pixelX - ptMouse.x;
+                (*i)->ellipse.point.y += pixelY - ptMouse.y;
+            }
+            ptMouse = D2D1::Point2F(pixelX, pixelY);
         }
         InvalidateRect(m_hwnd, NULL, FALSE);
     }
