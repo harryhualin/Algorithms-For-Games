@@ -80,6 +80,9 @@ struct MyEllipse
     }
 };
 
+// Global Variables
+shared_ptr<MyEllipse> innerPoint; // Point inside convex hull
+
 
 class MainWindow : public BaseWindow<MainWindow>
 {
@@ -192,6 +195,16 @@ void MainWindow::DiscardGraphicsResources()
     SafeRelease(&pBrush);
 }
 
+bool AngleComparison(shared_ptr<MyEllipse> p1, shared_ptr<MyEllipse> p2) {
+    double p1x = p1->ellipse.point.x;
+    double p2x = p2->ellipse.point.x;
+    double p1y = p1->ellipse.point.y;
+    double p2y = p2->ellipse.point.y;
+    double angle1 = atan2(p1y - innerPoint->ellipse.point.y, p1x - innerPoint->ellipse.point.x);
+    double angle2 = atan2(p2y - innerPoint->ellipse.point.y, p2x - innerPoint->ellipse.point.x);
+    return (angle1 < angle2);
+}
+
 void MainWindow::OnPaint()
 {
     HRESULT hr = CreateGraphicsResources();
@@ -204,21 +217,92 @@ void MainWindow::OnPaint()
 
         pRenderTarget->Clear( D2D1::ColorF(D2D1::ColorF::SkyBlue));
 
+        // Draw a grid background.
+        RECT rect;
+        GetWindowRect(m_hwnd, &rect);
+        int width = static_cast<int>(rect.right - rect.left);
+        int height = static_cast<int>(rect.bottom - rect.top);
+
+        pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::DarkGray));
+        for (int x = 220; x < width; x += 20)
+        {
+            if (x == (width + 220)/2 - (((width + 220)/2)%20)) {
+                pRenderTarget->DrawLine(
+                    D2D1::Point2F(static_cast<FLOAT>(x), 0.0f),
+                    D2D1::Point2F(static_cast<FLOAT>(x), rect.bottom),
+                    pBrush,
+                    5.0f
+                );
+            }
+            else {
+                pRenderTarget->DrawLine(
+                    D2D1::Point2F(static_cast<FLOAT>(x), 0.0f),
+                    D2D1::Point2F(static_cast<FLOAT>(x), rect.bottom),
+                    pBrush,
+                    0.5f
+                );
+            }
+        }
+
+        for (int y = 0; y < height; y += 20)
+        {
+            if (y == height/2 - ((height/2)%20)) {
+                pRenderTarget->DrawLine(
+                    D2D1::Point2F(220.0f, static_cast<FLOAT>(y)),
+                    D2D1::Point2F(rect.right, static_cast<FLOAT>(y)),
+                    pBrush,
+                    5.0f
+                );
+            }
+            else {
+                pRenderTarget->DrawLine(
+                    D2D1::Point2F(220.0f, static_cast<FLOAT>(y)),
+                    D2D1::Point2F(rect.right, static_cast<FLOAT>(y)),
+                    pBrush,
+                    0.5f
+                );
+            }
+        }
+
         for (auto i = ellipses.begin(); i != ellipses.end(); ++i)
         {
+            // Redraw Circles
+            pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::Black));
             (*i)->ChangeColor(D2D1::ColorF(D2D1::ColorF::Red));
             (*i)->Draw(pRenderTarget, pBrush);
         }
 
         list<shared_ptr<MyEllipse>> hull;
+        shared_ptr<MyEllipse> prev;
         // Determine algorithm to use to represent on screen
         switch (screen) {
         case QuickHull:
             QuickHullAlgorithm(ellipses, ellipses.size(), &hull);
+            prev = hull.front();
+            pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::White));
+            pRenderTarget->DrawLine(
+                hull.front()->ellipse.point,
+                hull.back()->ellipse.point,
+                pBrush,
+                3.0f
+            );
             for (auto i = hull.begin(); i != hull.end(); ++i)
             {
+                // Redraw Convex hull circles
                 (*i)->ChangeColor(D2D1::ColorF(D2D1::ColorF::Blue));
                 (*i)->Draw(pRenderTarget, pBrush);
+
+                // Redraw lines of convex hull
+                if (i != hull.begin()) {
+                    pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::White));
+                    pRenderTarget->DrawLine(
+                        prev->ellipse.point,
+                        (*i)->ellipse.point,
+                        pBrush,
+                        3.0f
+                    );
+                }
+                prev = *i;
             }
             break;
 
@@ -276,6 +360,14 @@ shared_ptr<MyEllipse> getValue(list<shared_ptr<MyEllipse>> ellipses, int n) {
     return *it;
 }
 
+bool Contains(list<shared_ptr<MyEllipse>> a, shared_ptr<MyEllipse> ellipse) {
+    for (auto i = a.begin(); i != a.end(); ++i) {
+        if (*i == ellipse) {
+            return true;
+        }
+    }
+    return false;
+}
 
 void quickHull(list<shared_ptr<MyEllipse>> a, int n, shared_ptr<MyEllipse> p1, shared_ptr<MyEllipse> p2, int side, list<shared_ptr<MyEllipse>> *hull) {
     int ind = -1;
@@ -292,8 +384,10 @@ void quickHull(list<shared_ptr<MyEllipse>> a, int n, shared_ptr<MyEllipse> p1, s
 
     // If not point is found, add end of line to convex hull
     if (ind == -1) {
-        hull->push_back(p1);
-        hull->push_back(p2);
+        if (!Contains(*hull, p1))
+            hull->push_back(p1);
+        if (!Contains(*hull, p2))
+            hull->push_back(p2);
         return;
     }
 
@@ -301,7 +395,6 @@ void quickHull(list<shared_ptr<MyEllipse>> a, int n, shared_ptr<MyEllipse> p1, s
     quickHull(a, n, getValue(a, ind), p2, -findSide(getValue(a, ind), p2, p1), hull);
 
 }
-
 
 // Algorithm implementations
 void MainWindow::QuickHullAlgorithm(list<shared_ptr<MyEllipse>> a, int n, list<shared_ptr<MyEllipse>> *hull) {
@@ -325,6 +418,13 @@ void MainWindow::QuickHullAlgorithm(list<shared_ptr<MyEllipse>> a, int n, list<s
     quickHull(a, n, getValue(a, min_x), getValue(a, max_x), 1, hull);
     quickHull(a, n, getValue(a, min_x), getValue(a, max_x), -1, hull);
 
+    for (auto i = a.begin(); i != a.end(); ++i) {
+        if (!Contains(*hull, *i)) {
+            innerPoint = *i;
+            break;
+        }
+    }
+    hull->sort(AngleComparison);
 }
 
 
@@ -543,8 +643,8 @@ void MainWindow::SetMode(Mode m)
 // Initializes circles for quick hull
 void MainWindow::QuickHullButton() {
     RECT rect;
-    screen = QuickHull;
     GetWindowRect(m_hwnd, &rect);
+    screen = QuickHull;
     ellipses.clear();
 
     for (int i = 0; i < 15; i++) {
