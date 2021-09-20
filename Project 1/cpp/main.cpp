@@ -65,6 +65,10 @@ struct MyEllipse
         pRT->DrawEllipse(ellipse, pBrush, 1.0f);
     }
 
+    void ChangeColor(D2D1_COLOR_F newColor) {
+        color = newColor;
+    }
+
     BOOL HitTest(float x, float y)
     {
         const float a = ellipse.radiusX;
@@ -140,6 +144,12 @@ class MainWindow : public BaseWindow<MainWindow>
     void    MinkowskiDifferenceButton();
     void    PointConvexHullButton();
     void    GJKButton();
+    void    QuickHullAlgorithm(list<shared_ptr<MyEllipse>> ellipses, int n, list<shared_ptr<MyEllipse>> *hull);
+    void    MinkowskiSumAlgorithm(list<shared_ptr<MyEllipse>> ellipses);
+    void    MinkowskiDifferenceAlgorithm(list<shared_ptr<MyEllipse>> ellipses);
+    void    PointConvexHullAlgorithm(list<shared_ptr<MyEllipse>> ellipses);
+    void    GJKAlgorithm(list<shared_ptr<MyEllipse>> ellipses);
+
 
 public:
 
@@ -192,11 +202,42 @@ void MainWindow::OnPaint()
      
         pRenderTarget->BeginDraw();
 
-        pRenderTarget->Clear( D2D1::ColorF(D2D1::ColorF::SkyBlue) );
+        pRenderTarget->Clear( D2D1::ColorF(D2D1::ColorF::SkyBlue));
 
         for (auto i = ellipses.begin(); i != ellipses.end(); ++i)
         {
+            (*i)->ChangeColor(D2D1::ColorF(D2D1::ColorF::Red));
             (*i)->Draw(pRenderTarget, pBrush);
+        }
+
+        list<shared_ptr<MyEllipse>> hull;
+        // Determine algorithm to use to represent on screen
+        switch (screen) {
+        case QuickHull:
+            QuickHullAlgorithm(ellipses, ellipses.size(), &hull);
+            for (auto i = hull.begin(); i != hull.end(); ++i)
+            {
+                (*i)->ChangeColor(D2D1::ColorF(D2D1::ColorF::Blue));
+                (*i)->Draw(pRenderTarget, pBrush);
+            }
+            break;
+
+        case MinkowskiSum:
+
+            break;
+
+        case MinkowskiDifference:
+
+            break;
+
+        case PointConvexHull:
+
+            break;
+
+        case GJK:
+
+            break;
+
         }
 
         hr = pRenderTarget->EndDraw();
@@ -208,6 +249,101 @@ void MainWindow::OnPaint()
 
     }
 }
+// Returns the side of point p with respect to line joining p1 and p2
+int findSide(shared_ptr<MyEllipse> p1, shared_ptr<MyEllipse> p2, shared_ptr<MyEllipse> p) {
+    int val = (p->ellipse.point.y - p1->ellipse.point.y) * (p2->ellipse.point.x - p1->ellipse.point.x) -
+        (p2->ellipse.point.y - p1->ellipse.point.y) * (p->ellipse.point.x - p1->ellipse.point.x);
+
+    if (val > 0)
+        return 1;
+    if (val < 0)
+        return -1;
+    return 0;
+}
+
+int lineDist(shared_ptr<MyEllipse> p1, shared_ptr<MyEllipse> p2, shared_ptr<MyEllipse> p) {
+    return abs((p->ellipse.point.y - p1->ellipse.point.y) * (p2->ellipse.point.x - p1->ellipse.point.x) -
+        (p2->ellipse.point.y - p1->ellipse.point.y) * (p->ellipse.point.x - p1->ellipse.point.x));
+}
+
+
+shared_ptr<MyEllipse> getValue(list<shared_ptr<MyEllipse>> ellipses, int n) {
+    if (ellipses.empty() || n < 0 || n >= ellipses.size()) {
+        return nullptr;
+    }
+    list<shared_ptr<MyEllipse>>::iterator it = ellipses.begin();
+    advance(it, n);
+    return *it;
+}
+
+
+void quickHull(list<shared_ptr<MyEllipse>> a, int n, shared_ptr<MyEllipse> p1, shared_ptr<MyEllipse> p2, int side, list<shared_ptr<MyEllipse>> *hull) {
+    int ind = -1;
+    int max_dist = 0;
+
+    // find point with max distance from line and also with side of line
+    for (int i = 0; i < n; i++) {
+        int temp = lineDist(p1, p2, getValue(a, i));
+        if (findSide(p1, p2, getValue(a, i)) == side && temp > max_dist) {
+            ind = i;
+            max_dist = temp;
+        }
+    }
+
+    // If not point is found, add end of line to convex hull
+    if (ind == -1) {
+        hull->push_back(p1);
+        hull->push_back(p2);
+        return;
+    }
+
+    quickHull(a, n, getValue(a, ind), p1, -findSide(getValue(a, ind), p1, p2), hull);
+    quickHull(a, n, getValue(a, ind), p2, -findSide(getValue(a, ind), p2, p1), hull);
+
+}
+
+
+// Algorithm implementations
+void MainWindow::QuickHullAlgorithm(list<shared_ptr<MyEllipse>> a, int n, list<shared_ptr<MyEllipse>> *hull) {
+    if (n < 3) {
+        return;
+    }
+
+    // Finding point with min and max x coordinate
+    int min_x = 0;
+    int max_x = 0;
+    for (int i = 1; i < n; i++) {
+        if (getValue(a, i)->ellipse.point.x < getValue(a, min_x)->ellipse.point.x) {
+            min_x = i;
+        }
+        if (getValue(a, i)->ellipse.point.x > getValue(a, max_x)->ellipse.point.x) {
+            max_x = i;
+        }
+    }
+
+    // Recursively find convex hull points of both sides of line joining a[min_x] and a[max_x]
+    quickHull(a, n, getValue(a, min_x), getValue(a, max_x), 1, hull);
+    quickHull(a, n, getValue(a, min_x), getValue(a, max_x), -1, hull);
+
+}
+
+
+void MainWindow::MinkowskiSumAlgorithm(list<shared_ptr<MyEllipse>> ellipses) {
+
+}
+
+void MainWindow::MinkowskiDifferenceAlgorithm(list<shared_ptr<MyEllipse>> ellipses) {
+
+}
+
+void MainWindow::PointConvexHullAlgorithm(list<shared_ptr<MyEllipse>> ellipses) {
+
+}
+
+void MainWindow::GJKAlgorithm(list<shared_ptr<MyEllipse>> ellipses) {
+
+}
+
 
 void MainWindow::Resize()
 {
