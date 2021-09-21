@@ -312,7 +312,7 @@ void MainWindow::OnPaint()
             break;
 
         case GJK:
-
+            GJKDraw();
             break;
 
         }
@@ -617,7 +617,102 @@ void MainWindow::PointConvexHullDraw() {
 }
 
 void MainWindow::GJKDraw() {
+    // Divide ellipses into two groups
+    group1.clear();
+    group2.clear();
+    hull1.clear();
+    hull2.clear();
+    list<shared_ptr<MyEllipse>> hull3;
+    list<shared_ptr<MyEllipse>> hull4;
+    shared_ptr<MyEllipse> prev;
 
+    for (auto i = ellipses.begin(); i != ellipses.end(); ++i) {
+        if ((*i)->group == 1) {
+            group1.push_back(*i);
+        }
+        else if ((*i)->group == 2) {
+            group2.push_back(*i);
+        }
+    }
+
+    // Draw first set of convex hulls
+    QuickHullAlgorithm(group1, group1.size(), &hull1);
+    pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::White));
+    pRenderTarget->DrawLine(
+        hull1.front()->ellipse.point,
+        hull1.back()->ellipse.point,
+        pBrush,
+        3.0f
+    );
+    prev = hull1.front();
+    for (auto i = hull1.begin(); i != hull1.end(); ++i)
+    {
+        // Redraw lines of convex hull
+        if (i != hull1.begin()) {
+            pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::White));
+            pRenderTarget->DrawLine(
+                prev->ellipse.point,
+                (*i)->ellipse.point,
+                pBrush,
+                3.0f
+            );
+        }
+        prev = *i;
+    }
+
+    // Draw second set of convex hulls
+    QuickHullAlgorithm(group2, group2.size(), &hull2);
+    pRenderTarget->DrawLine(
+        hull2.front()->ellipse.point,
+        hull2.back()->ellipse.point,
+        pBrush,
+        3.0f
+    );
+    prev = hull2.front();
+    for (auto i = hull2.begin(); i != hull2.end(); ++i)
+    {
+        // Redraw lines of convex hull
+        if (i != hull2.begin()) {
+            pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::White));
+            pRenderTarget->DrawLine(
+                prev->ellipse.point,
+                (*i)->ellipse.point,
+                pBrush,
+                3.0f
+            );
+        }
+        prev = *i;
+    }
+
+    MinkowskiDifferenceAlgorithm(hull1, hull2, &hull3);
+    QuickHullAlgorithm(hull3, hull3.size(), &hull4);
+
+    if (convexHullContains(hull4, centerX, centerY))
+        pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::Green));
+    else
+        pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::Red));
+
+    pRenderTarget->DrawLine(
+        hull4.front()->ellipse.point,
+        hull4.back()->ellipse.point,
+        pBrush,
+        3.0f
+    );
+    prev = hull4.front();
+    for (auto i = hull4.begin(); i != hull4.end(); ++i)
+    {
+        // Redraw lines of convex hull
+        if (i != hull4.begin()) {
+            pRenderTarget->DrawLine(
+                prev->ellipse.point,
+                (*i)->ellipse.point,
+                pBrush,
+                3.0f
+            );
+        }
+        prev = *i;
+    }
+    
 }
 
 int lineDist(shared_ptr<MyEllipse> p1, shared_ptr<MyEllipse> p2, shared_ptr<MyEllipse> p) {
@@ -1075,10 +1170,18 @@ void MainWindow::GJKButton() {
     GetWindowRect(m_hwnd, &rect);
     ellipses.clear();
 
-    for (int i = 0; i < 15; i++) {
-        float xcoord = rand() % (rect.right - rect.left - 300) + 250;
-        float ycoord = rand() % (rect.bottom - rect.top - 150) + 50;
-        InsertEllipse(xcoord, ycoord, 0.0f, D2D1::ColorF(D2D1::ColorF::Red), 1);
+    // Convex hull for group 1
+    for (int i = 0; i < 6; i++) {
+        float xcoord = rand() % ((rect.right - rect.left - 300) / 2) + 250;
+        float ycoord = rand() % ((rect.bottom - rect.top - 150) / 2) + 50;
+        InsertEllipse(xcoord, ycoord, 10.0f, D2D1::ColorF(D2D1::ColorF::Red), 1);
+    }
+
+    // Convex hull for group 2
+    for (int i = 0; i < 6; i++) {
+        float xcoord = rand() % ((rect.right - rect.left - 300) / 2) + 250 + (rect.right - rect.left - 300) / 2;
+        float ycoord = rand() % ((rect.bottom - rect.top - 150) / 2) + 50 + (rect.bottom - rect.top - 150) / 2;
+        InsertEllipse(xcoord, ycoord, 10.0f, D2D1::ColorF(D2D1::ColorF::Blue), 2);
     }
     InvalidateRect(m_hwnd, NULL, FALSE);
 }
