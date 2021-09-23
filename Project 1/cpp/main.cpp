@@ -2,7 +2,6 @@
 #include <Windowsx.h>
 #include <d2d1.h>
 
-
 #include <list>
 #include <memory>
 using namespace std;
@@ -581,8 +580,14 @@ bool convexHullContains(list<shared_ptr<MyEllipse>> hull, float x, float y) {
 
 void MainWindow::PointConvexHullDraw() {
     hull1.clear();
+    group1.clear();
+    for (auto i = ellipses.begin(); i != ellipses.end(); ++i) {
+        if ((*i)->group == 1) {
+            group1.push_back(*i);
+        }
+    }
     shared_ptr<MyEllipse> prev;
-    QuickHullAlgorithm(ellipses, ellipses.size() - 1, &hull1);
+    QuickHullAlgorithm(group1, group1.size() - 1, &hull1);
     pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::White));
     pRenderTarget->DrawLine(
         hull1.front()->ellipse.point,
