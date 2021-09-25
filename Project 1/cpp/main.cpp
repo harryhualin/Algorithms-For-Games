@@ -153,6 +153,7 @@ class MainWindow : public BaseWindow<MainWindow>
     void    OnLButtonUp();
     void    OnMouseMove(int pixelX, int pixelY, DWORD flags);
     void    OnKeyDown(UINT vkey);
+    void    OnMouseWheel(int n);
     void    CreateButtons();
     void    QuickHullButton();
     void    MinkowskiSumButton();
@@ -241,7 +242,7 @@ void MainWindow::OnPaint()
         int height = static_cast<int>(rect.bottom - rect.top);
 
         pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::DarkGray));
-        for (int x = 220; x < width; x += 20)
+        for (int x = 220; x < width; x += (20*scale))
         { 
                 pRenderTarget->DrawLine(
                     D2D1::Point2F(static_cast<FLOAT>(x), 0.0f),
@@ -252,7 +253,7 @@ void MainWindow::OnPaint()
           
         }
        
-        for (int y = 0; y < height; y += 20)
+        for (int y = 0; y < height; y += (20*scale))
         {
                 pRenderTarget->DrawLine(
                     D2D1::Point2F(220.0f, static_cast<FLOAT>(y)),
@@ -1255,6 +1256,7 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 
         CreateButtons();
         DPIScale::Initialize(pFactory);
+        scale = 1.0;
         SetMode(SelectMode);
         return 0;
 
@@ -1286,6 +1288,7 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 
     case WM_COMMAND:
         // Change page on associated button press
+        scale = 1.0f;
         if (LOWORD(wParam) == BTN_QUICK_HULL) {
             QuickHullButton();
         }
@@ -1314,16 +1317,12 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_KEYDOWN:
         OnKeyDown((UINT)wParam);
         return 0;
+        break;
     case WM_MOUSEWHEEL:
         static int nDelta = 0;
-        nDelta += GET_WHEEL_DELTA_WPARAM(wParam);
-        if (abs(nDelta) >= WHEEL_DELTA)
-        {
-            if (nDelta > 0) { scale= 1.1f; }
-            else { scale /= 1.1f; }
-            nDelta = 0;
-            InvalidateRect(m_hwnd, NULL, FALSE);
-        }
+        nDelta = GET_WHEEL_DELTA_WPARAM(wParam);
+        OnMouseWheel(nDelta);
+        return 0;
     }
     return DefWindowProc(m_hwnd, uMsg, wParam, lParam);
 }
@@ -1395,3 +1394,40 @@ void MainWindow::CreateButtons() {
         (HINSTANCE)GetWindowLongPtr(m_hwnd, GWLP_HINSTANCE),
         NULL);      // Pointer not needed.
 }
+
+void MainWindow::OnMouseWheel(int nDelta) {
+   
+    if (abs(nDelta) >= WHEEL_DELTA)
+    {
+        if (nDelta >0 && scale<4.0f) { 
+             scale *= 2.0f; 
+            for (auto i = ellipses.begin(); i != ellipses.end(); ++i) 
+            {
+            (*i)->ellipse.radiusY *= 2;
+            (*i)->ellipse.radiusX *= 2;
+            if ((*i)->ellipse.point.x<centerX) (*i)->ellipse.point.x -= (centerX - (*i)->ellipse.point.x);
+            else if ((*i)->ellipse.point.x > centerX) (*i)->ellipse.point.x += ((*i)->ellipse.point.x-centerX);
+            if ((*i)->ellipse.point.y < centerY) (*i)->ellipse.point.y -= (centerY - (*i)->ellipse.point.y);
+            else if ((*i)->ellipse.point.y > centerY) (*i)->ellipse.point.y += ((*i)->ellipse.point.y - centerY);
+            } 
+          
+        }
+        else if(nDelta < 0 && scale>0.25f) { 
+            scale *= 0.5f;
+            for (auto i = ellipses.begin(); i != ellipses.end(); ++i)
+            {
+            (*i)->ellipse.radiusY *= 0.5;
+            (*i)->ellipse.radiusX *= 0.5;
+       
+            if ((*i)->ellipse.point.x < centerX) (*i)->ellipse.point.x += ((centerX - (*i)->ellipse.point.x)/2);
+            else if ((*i)->ellipse.point.x > centerX) (*i)->ellipse.point.x -= (((*i)->ellipse.point.x- centerX)/2);
+            if ((*i)->ellipse.point.y < centerY) (*i)->ellipse.point.y += ((centerY - (*i)->ellipse.point.y)/2);
+            else if ((*i)->ellipse.point.y > centerY) (*i)->ellipse.point.y -= (((*i)->ellipse.point.y - centerY)/2);
+            }
+            
+        }
+        
+        InvalidateRect(m_hwnd, NULL, FALSE);
+    }
+    
+};
