@@ -111,6 +111,7 @@ class MainWindow : public BaseWindow<MainWindow>
     Mode                    mode;
     Screen                  screen;
     size_t                  nextColor;
+ 
 
     list<shared_ptr<MyEllipse>>             ellipses;
     list<shared_ptr<MyEllipse>>::iterator   selection;
@@ -121,9 +122,10 @@ class MainWindow : public BaseWindow<MainWindow>
     list<shared_ptr<MyEllipse>>             group2;
     int                                     group;
 
+    float                                   scale;
     float                                   centerX;
     float                                   centerY;
-
+    MyEllipse                               orgin;
      
     shared_ptr<MyEllipse> Selection() 
     { 
@@ -240,47 +242,40 @@ void MainWindow::OnPaint()
 
         pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::DarkGray));
         for (int x = 220; x < width; x += 20)
-        {
-            if (x == (width + 220)/2 - (((width + 220)/2)%20)) {
-                pRenderTarget->DrawLine(
-                    D2D1::Point2F(static_cast<FLOAT>(x), 0.0f),
-                    D2D1::Point2F(static_cast<FLOAT>(x), rect.bottom),
-                    pBrush,
-                    5.0f
-                );
-                centerX = x;
-            }
-            else {
+        { 
                 pRenderTarget->DrawLine(
                     D2D1::Point2F(static_cast<FLOAT>(x), 0.0f),
                     D2D1::Point2F(static_cast<FLOAT>(x), rect.bottom),
                     pBrush,
                     0.5f
                 );
-            }
+          
         }
-
+       
         for (int y = 0; y < height; y += 20)
         {
-            if (y == height/2 - ((height/2)%20)) {
-                pRenderTarget->DrawLine(
-                    D2D1::Point2F(220.0f, static_cast<FLOAT>(y)),
-                    D2D1::Point2F(rect.right, static_cast<FLOAT>(y)),
-                    pBrush,
-                    5.0f
-                );
-                centerY = y;
-            }
-            else {
                 pRenderTarget->DrawLine(
                     D2D1::Point2F(220.0f, static_cast<FLOAT>(y)),
                     D2D1::Point2F(rect.right, static_cast<FLOAT>(y)),
                     pBrush,
                     0.5f
                 );
-            }
+            
         }
-
+            pRenderTarget->DrawLine(
+                D2D1::Point2F(static_cast<FLOAT>(centerX), 0.0f),
+                D2D1::Point2F(static_cast<FLOAT>(centerX), rect.bottom),
+                pBrush,
+                5.0f
+             );
+            pRenderTarget->DrawLine(
+                D2D1::Point2F(220.0f, static_cast<FLOAT>(centerY)),
+                D2D1::Point2F(rect.right, static_cast<FLOAT>(centerY)),
+                pBrush,
+                5.0f
+            );
+            //centerY = height/2 - ((height/2)%20y;
+        
         for (auto i = ellipses.begin(); i != ellipses.end(); ++i)
         {
             // Redraw Circles
@@ -558,7 +553,7 @@ int findSide(shared_ptr<MyEllipse> p1, shared_ptr<MyEllipse> p2, shared_ptr<MyEl
 }
 
 // Retruns whether or not a point is within a convex hull
-bool convexHullContains(list<shared_ptr<MyEllipse>> hull, float x, float y) {
+ bool convexHullContains(list<shared_ptr<MyEllipse>> hull, float x, float y) {
     if (hull.empty()) {
         return false;
     }
@@ -914,8 +909,12 @@ void MainWindow::OnLButtonDown(int pixelX, int pixelY, DWORD flags)
 
             SetMode(DragMode);
         }
-        else {
-            group = -1;
+        else if (!convexHullContains(hull1, pixelX, pixelY)&& !convexHullContains(hull2, pixelX, pixelY)) {
+            SetCapture(m_hwnd);
+            group = 10;
+            ptMouse = D2D1::Point2F(pixelX, pixelY);
+
+            SetMode(DragMode);
         }
 
     InvalidateRect(m_hwnd, NULL, FALSE);
@@ -981,6 +980,15 @@ void MainWindow::OnMouseMove(int pixelX, int pixelY, DWORD flags)
         }
         else if (group == 2) {
             for (auto i = group2.begin(); i != group2.end(); ++i) {
+                (*i)->ellipse.point.x += pixelX - ptMouse.x;
+                (*i)->ellipse.point.y += pixelY - ptMouse.y;
+            }
+            ptMouse = D2D1::Point2F(pixelX, pixelY);
+        }
+        else if (group == 10){
+            centerX += pixelX - ptMouse.x;
+            centerY += pixelY - ptMouse.y;
+            for (auto i = ellipses.begin(); i != ellipses.end(); ++i) {
                 (*i)->ellipse.point.x += pixelX - ptMouse.x;
                 (*i)->ellipse.point.y += pixelY - ptMouse.y;
             }
@@ -1095,7 +1103,10 @@ void MainWindow::QuickHullButton() {
     GetWindowRect(m_hwnd, &rect);
     screen = QuickHull;
     ellipses.clear();
-
+    int width = static_cast<int>(rect.right - rect.left);
+    int height = static_cast<int>(rect.bottom - rect.top);
+    centerX = (width + 220) / 2 - (((width + 220) / 2) % 20);
+    centerY = height / 2 - ((height / 2) % 20);
     for (int i = 0; i < 15; i++) {
         float xcoord = rand() % (rect.right - rect.left - 300) + 250;
         float ycoord = rand() % (rect.bottom - rect.top - 150) + 50;
@@ -1110,7 +1121,10 @@ void MainWindow::MinkowskiSumButton() {
     screen = MinkowskiSum;
     GetWindowRect(m_hwnd, &rect);
     ellipses.clear();
-
+    int width = static_cast<int>(rect.right - rect.left);
+    int height = static_cast<int>(rect.bottom - rect.top);
+    centerX = (width + 220) / 2 - (((width + 220) / 2) % 20);
+    centerY = height / 2 - ((height / 2) % 20);
     // Convex hull for group 1
     for (int i = 0; i < 6; i++) {
         float xcoord = rand() % ((rect.right - rect.left - 300)/2) + 250;
@@ -1132,7 +1146,11 @@ void MainWindow::MinkowskiDifferenceButton() {
     RECT rect;
     screen = MinkowskiDifference;
     GetWindowRect(m_hwnd, &rect);
-    ellipses.clear();
+    ellipses.clear(); 
+    int width = static_cast<int>(rect.right - rect.left);
+    int height = static_cast<int>(rect.bottom - rect.top);
+    centerX = (width + 220) / 2 - (((width + 220) / 2) % 20);
+    centerY = height / 2 - ((height / 2) % 20);
 
     // Convex hull for group 1
     for (int i = 0; i < 6; i++) {
@@ -1156,6 +1174,10 @@ void MainWindow::PointConvexHullButton() {
     screen = PointConvexHull;
     GetWindowRect(m_hwnd, &rect);
     ellipses.clear();
+    int width = static_cast<int>(rect.right - rect.left);
+    int height = static_cast<int>(rect.bottom - rect.top);
+    centerX = (width + 220) / 2 - (((width + 220) / 2) % 20);
+    centerY = height / 2 - ((height / 2) % 20);
 
     for (int i = 0; i < 15; i++) {
         float xcoord = rand() % (rect.right - rect.left - 300) + 250;
@@ -1174,7 +1196,10 @@ void MainWindow::GJKButton() {
     screen = GJK;
     GetWindowRect(m_hwnd, &rect);
     ellipses.clear();
-
+    int width = static_cast<int>(rect.right - rect.left);
+    int height = static_cast<int>(rect.bottom - rect.top);
+    centerX = (width + 220) / 2 - (((width + 220) / 2) % 20);
+    centerY = height / 2 - ((height / 2) % 20);
     // Convex hull for group 1
     for (int i = 0; i < 6; i++) {
         float xcoord = rand() % ((rect.right - rect.left - 300) / 2) + 250;
@@ -1229,7 +1254,6 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
 
         CreateButtons();
-
         DPIScale::Initialize(pFactory);
         SetMode(SelectMode);
         return 0;
@@ -1290,6 +1314,16 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_KEYDOWN:
         OnKeyDown((UINT)wParam);
         return 0;
+    case WM_MOUSEWHEEL:
+        static int nDelta = 0;
+        nDelta += GET_WHEEL_DELTA_WPARAM(wParam);
+        if (abs(nDelta) >= WHEEL_DELTA)
+        {
+            if (nDelta > 0) { scale= 1.1f; }
+            else { scale /= 1.1f; }
+            nDelta = 0;
+            InvalidateRect(m_hwnd, NULL, FALSE);
+        }
     }
     return DefWindowProc(m_hwnd, uMsg, wParam, lParam);
 }
@@ -1361,5 +1395,3 @@ void MainWindow::CreateButtons() {
         (HINSTANCE)GetWindowLongPtr(m_hwnd, GWLP_HINSTANCE),
         NULL);      // Pointer not needed.
 }
-
-
